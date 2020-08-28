@@ -1,8 +1,8 @@
 {
-  "name": "typescript-action",
+  "name": "tsaction",
   "version": "0.0.0",
   "private": true,
-  "description": "TypeScript template action",
+  "description": "Based on TypeScript template action",
   "main": "lib/main.js",
   "scripts": {
     "build": "tsc",

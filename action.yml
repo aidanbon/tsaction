@@ -1,11 +1,11 @@
-name: 'Your name here'
-description: 'Provide a description here'
+name: 'fay test action'
+description: 'Fay Test Action'
 author: 'Your name or organization here'
 inputs:
   milliseconds: # change this
     required: true
-    description: 'input description here'
-    default: 'default value if applicable'
+    description: 'ms to wait'
+    default: '3000'
 runs:
   using: 'node12'
   main: 'dist/index.js'
