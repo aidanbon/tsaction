@@ -1479,14 +1479,21 @@ const github = __importStar(__webpack_require__(438));
 function run() {
     return __awaiter(this, void 0, void 0, function* () {
         try {
+            core.info(`info: START...`);
             const token = core.getInput('github-token', { required: true });
+            core.info(`info: token = ${token}`);
             core.debug(`debug: token = ${token}`); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+            const bodyDoesNotContain = core.getInput('bodyDoesNotContain', { required: false });
+            core.info(`info: bodyDoesNotContain = ${bodyDoesNotContain}`);
             const context = github.context;
             const contextStr = JSON.stringify(context, null, 2);
+            core.info(`info: context = ${contextStr}`);
             core.debug(`debug: context = ${contextStr}`);
-            core.setOutput('time', new Date().toTimeString());
+            core.setOutput('diff', new Date().toTimeString());
+            core.info(`info: END...`);
         }
         catch (error) {
+            core.info(`info: error: ${error.message}`);
             core.setFailed(error.message);
         }
     });
