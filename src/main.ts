@@ -17,9 +17,10 @@ async function run(): Promise<void> {
     core.debug(`debug: context = ${contextStr}`)
 
     const octokit = github.getOctokit(token)
-    const diffURL = context?.payload?.pull_request?.diff_url || ''
-    core.info(`info: octokit request to URL: ${diffURL}`)
-    const diffResult = await octokit.request(diffURL);
+    // const diffURL = context?.payload?.pull_request?.diff_url || ''
+    const commitsURL = context?.payload?.pull_request?.commits_url || ''
+    core.info(`info: octokit request to URL: ${commitsURL}`)
+    const diffResult = await octokit.request(commitsURL);
     const diffFiles = parse(diffResult.data)
     const diffFilesStr = JSON.stringify(diffFiles, null, 2)
     core.info(`debug: diffFiles = ${diffFilesStr}`)

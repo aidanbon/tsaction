@@ -1492,9 +1492,10 @@ function run() {
             core.info(`info: context = ${contextStr}`);
             core.debug(`debug: context = ${contextStr}`);
             const octokit = github.getOctokit(token);
-            const diffURL = ((_b = (_a = context === null || context === void 0 ? void 0 : context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.diff_url) || '';
-            core.info(`info: octokit request to URL: ${diffURL}`);
-            const diffResult = yield octokit.request(diffURL);
+            // const diffURL = context?.payload?.pull_request?.diff_url || ''
+            const commitsURL = ((_b = (_a = context === null || context === void 0 ? void 0 : context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.commits_url) || '';
+            core.info(`info: octokit request to URL: ${commitsURL}`);
+            const diffResult = yield octokit.request(commitsURL);
             const diffFiles = parse(diffResult.data);
             const diffFilesStr = JSON.stringify(diffFiles, null, 2);
             core.info(`debug: diffFiles = ${diffFilesStr}`);
