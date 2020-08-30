@@ -1476,7 +1476,9 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__webpack_require__(186));
 const github = __importStar(__webpack_require__(438));
+const parse = __webpack_require__(202);
 function run() {
+    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.info(`info: START...`);
@@ -1489,6 +1491,13 @@ function run() {
             const contextStr = JSON.stringify(context, null, 2);
             core.info(`info: context = ${contextStr}`);
             core.debug(`debug: context = ${contextStr}`);
+            const octokit = github.getOctokit(token);
+            const diffURL = ((_b = (_a = context === null || context === void 0 ? void 0 : context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.diff_url) || '';
+            core.info(`info: octokit request to URL: ${diffURL}`);
+            const diffResult = yield octokit.request(diffURL);
+            const diffFiles = parse(diffResult.data);
+            const diffFilesStr = JSON.stringify(diffFiles, null, 2);
+            core.info(`debug: diffFiles = ${diffFilesStr}`);
             core.setOutput('diff', new Date().toTimeString());
             core.info(`info: END...`);
         }
@@ -1866,6 +1875,14 @@ paginateRest.VERSION = VERSION;
 
 exports.paginateRest = paginateRest;
 //# sourceMappingURL=index.js.map
+
+
+/***/ }),
+
+/***/ 202:
+/***/ (function(module) {
+
+module.exports = eval("require")("parse-diff");
 
 
 /***/ }),

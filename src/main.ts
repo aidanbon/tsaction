@@ -1,5 +1,6 @@
 import * as core from '@actions/core'
 import * as github from '@actions/github'
+const parse = require('parse-diff')
 
 async function run(): Promise<void> {
   try {
@@ -14,6 +15,14 @@ async function run(): Promise<void> {
     const contextStr = JSON.stringify(context, null, 2)
     core.info(`info: context = ${contextStr}`)
     core.debug(`debug: context = ${contextStr}`)
+
+    const octokit = github.getOctokit(token)
+    const diffURL = context?.payload?.pull_request?.diff_url || ''
+    core.info(`info: octokit request to URL: ${diffURL}`)
+    const diffResult = await octokit.request(diffURL);
+    const diffFiles = parse(diffResult.data)
+    const diffFilesStr = JSON.stringify(diffFiles, null, 2)
+    core.info(`debug: diffFiles = ${diffFilesStr}`)
 
     core.setOutput('diff', new Date().toTimeString())
     core.info(`info: END...`)
