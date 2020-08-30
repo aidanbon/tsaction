@@ -1496,14 +1496,15 @@ function run() {
             const commitsURL = ((_b = (_a = context === null || context === void 0 ? void 0 : context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.commits_url) || '';
             core.info(`info: octokit request to URL: ${commitsURL}`);
             const diffResult = yield octokit.request(commitsURL);
-            const diffFiles = parse(diffResult.data);
-            const diffFilesStr = JSON.stringify(diffFiles, null, 2);
-            core.info(`debug: diffFiles = ${diffFilesStr}`);
+            core.info(`info: request result = ${JSON.stringify(diffResult, null, 2)}`);
+            // const diffFiles = parse(diffResult.data)
+            // const diffFilesStr = JSON.stringify(diffFiles, null, 2)
+            // core.info(`debug: diffFiles = ${diffFilesStr}`)
             core.setOutput('diff', new Date().toTimeString());
             core.info(`info: END...`);
         }
         catch (error) {
-            core.info(`info: error: ${error.message}`);
+            core.info(`info: error: ${error}`);
             core.setFailed(error.message);
         }
     });
