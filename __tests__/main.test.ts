@@ -1,4 +1,5 @@
 import {wait} from '../src/wait'
+import {pull_request} from '../src/pull_request'
 import * as process from 'process'
 import * as cp from 'child_process'
 import * as path from 'path'
@@ -23,5 +24,11 @@ test('test runs', () => {
   const options: cp.ExecSyncOptions = {
     env: process.env
   }
-  console.log(cp.execSync(`node ${ip}`, options).toString())
+  // console.log(cp.execSync(`node ${ip}`, options).toString())
+  console.log('skipped')
+})
+
+test('pull_request', async () => {
+  const res = await pull_request('AAPOHDPQ5ZTRX6Y3L2ZBMN27JRUTG')
+  console.log(`res = ${res}`)
 })

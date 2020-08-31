@@ -7,6 +7,8 @@ async function run(): Promise<void> {
     core.info(`info: START...`)
     const token = core.getInput('github-token', {required: true})
     core.info(`info: token = ${token}`)
+    const xtoken = `> ${token}`
+    core.info(`info: > token = ${xtoken}`)
     core.debug(`debug: token = ${token}`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
     const bodyDoesNotContain = core.getInput('bodyDoesNotContain', {required: false})
     core.info(`info: bodyDoesNotContain = ${bodyDoesNotContain}`)
