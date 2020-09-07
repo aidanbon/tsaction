@@ -27,6 +27,7 @@
   "dependencies": {
     "@actions/core": "^1.2.5",
     "@actions/github": "^4.0.0",
+    "git-file-patch-parser": "^1.0.0",
     "parse-diff": "^0.7.0"
   },
   "devDependencies": {
