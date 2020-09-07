@@ -1,5 +1,6 @@
 import {wait} from '../src/wait'
 import {IPRSpec, IPR, getPRDetails} from '../src/pull_request'
+import { isNullOrUndefined } from 'util'
 // import * as process from 'process'
 // import * as cp from 'child_process'
 // import * as path from 'path'
@@ -28,10 +29,17 @@ test('throws invalid number', async () => {
 //   console.log('skipped')
 // })
 
+test ('isNullOrUndefined', () => {
+  let xx: string = 'xx'
+  if (!isNullOrUndefined(xx)) {
+    console.log('yes, xx is defined')
+  }
+})
+
 test('getPRDetails', async () => {
   // To generate a Personal Access Token: https://docs.github.com/en/github/authenticating-to-github/creating-a-personal-access-token
   const prSpec: IPRSpec = {
-    token: '1ac5e57b26edd28f7517e910dcbdf96ed9f85ab2',
+    token: `phc github`,
     owner: 'spin-org',
     repo: 'data',
     pull_number: 272,

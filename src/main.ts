@@ -1,15 +1,13 @@
 import * as core from '@actions/core'
+import {IPRSpec, IPR, getPRDetails} from './pull_request'
 import * as github from '@actions/github'
-const parse = require('parse-diff')
+import { isNullOrUndefined } from 'util'
 
 async function run(): Promise<void> {
   try {
     core.info(`info: START...`)
     const token = core.getInput('github-token', {required: true})
-    core.info(`info: token = ${token}`)
-    const xtoken = `> ${token}`
-    core.info(`info: > token = ${xtoken}`)
-    core.debug(`debug: token = ${token}`) // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
+
     const bodyDoesNotContain = core.getInput('bodyDoesNotContain', {required: false})
     core.info(`info: bodyDoesNotContain = ${bodyDoesNotContain}`)
 
@@ -18,19 +16,22 @@ async function run(): Promise<void> {
     core.info(`info: context = ${contextStr}`)
     core.debug(`debug: context = ${contextStr}`)
 
-    const octokit = github.getOctokit(token)
-    const diffURL = context?.payload?.pull_request?.diff_url || ''
-    // const commitsURL = context?.payload?.pull_request?.commits_url || ''
-    core.info(`info: octokit request to URL: ${diffURL}`)
-    const diffResult = await octokit.request(diffURL);
-    core.info(`info: request result = ${JSON.stringify(diffResult, null, 2)}`);
-    if (diffResult && diffResult.data) {
-      const diffFiles = parse(diffResult.data)
-      const diffFilesStr = JSON.stringify(diffFiles, null, 2)
-      core.info(`debug: diffFiles = ${diffFilesStr}`)
+    const contextPR = context.payload.pull_request
+    if (!isNullOrUndefined(contextPR)) {
+      const prSpec: IPRSpec = {
+        token,
+        owner: contextPR.base.repo.owner.login,
+        repo: contextPR.base.repo.name,
+        pull_number: contextPR.number,
+      }
+      core.info(`prSpec = ${JSON.stringify(prSpec, null, 2)}`)
+      const prArr: IPR[] = await getPRDetails(prSpec)
+      core.info(`res = ${JSON.stringify(prArr, null, 2)}`)
+    } else {
+      core.setFailed('This is not a Pull Request')
     }
 
-    core.setOutput('diff', new Date().toTimeString())
+    core.setOutput('diff', new Date().toTimeString()) // fay
     core.info(`info: END...`)
   } catch (error) {
     core.info(`info: error: ${error}`)
