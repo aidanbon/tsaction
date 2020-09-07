@@ -1433,6 +1433,75 @@ exports.Context = Context;
 
 /***/ }),
 
+/***/ 63:
+/***/ (function(module) {
+
+const fileLinesRegex = /^@@ -([0-9]*),?\S* \+([0-9]*),?/;
+
+function splitIntoHunks(lines) {
+  const hunks = [];
+
+  let currentHunk;
+
+  lines.forEach((line) => {
+    if (line.startsWith('@@')) {
+      const [, deletedStartLineNumber, addedStartLineNumber] = line.match(fileLinesRegex);
+      currentHunk = {
+        deletedStartLineNumber: parseInt(deletedStartLineNumber, 10),
+        addedStartLineNumber: parseInt(addedStartLineNumber, 10),
+        lines: [],
+      };
+      hunks.push(currentHunk);
+    } else {
+      currentHunk.lines.push(line);
+    }
+  });
+
+
+  return hunks;
+}
+
+/**
+ * @param {string} patch - the file patch to parse. taken from https://developer.github.com/v3/pulls/#list-pull-requests-files
+ * @returns {GitPatch[]} Array of git patches
+ */
+module.exports = (patch) => {
+  const lines = patch.split('\n');
+
+  const gitPatches = [];
+
+  splitIntoHunks(lines).forEach((hunk) => {
+    let addedLineNumber = hunk.addedStartLineNumber;
+    let deletedLineNumber = hunk.deletedStartLineNumber;
+
+    hunk.lines.forEach((line) => {
+      if (line.startsWith('+')) {
+        gitPatches.push({
+          modification: 'added',
+          line: line.substr(1),
+          lineNumber: addedLineNumber,
+        });
+        addedLineNumber += 1;
+      } else if (line.startsWith('-')) {
+        gitPatches.push({
+          modification: 'deleted',
+          line: line.substr(1),
+          lineNumber: deletedLineNumber,
+        });
+        deletedLineNumber += 1;
+      } else {
+        addedLineNumber += 1;
+        deletedLineNumber += 1;
+      }
+    });
+  });
+
+  return gitPatches;
+};
+
+
+/***/ }),
+
 /***/ 87:
 /***/ (function(module) {
 
@@ -1475,36 +1544,36 @@ var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, ge
 };
 Object.defineProperty(exports, "__esModule", { value: true });
 const core = __importStar(__webpack_require__(186));
+const pull_request_1 = __webpack_require__(162);
 const github = __importStar(__webpack_require__(438));
-const parse = __webpack_require__(833);
+const util_1 = __webpack_require__(669);
 function run() {
-    var _a, _b;
     return __awaiter(this, void 0, void 0, function* () {
         try {
             core.info(`info: START...`);
             const token = core.getInput('github-token', { required: true });
-            core.info(`info: token = ${token}`);
-            const xtoken = `> ${token}`;
-            core.info(`info: > token = ${xtoken}`);
-            core.debug(`debug: token = ${token}`); // debug is only output if you set the secret `ACTIONS_RUNNER_DEBUG` to true
             const bodyDoesNotContain = core.getInput('bodyDoesNotContain', { required: false });
             core.info(`info: bodyDoesNotContain = ${bodyDoesNotContain}`);
             const context = github.context;
             const contextStr = JSON.stringify(context, null, 2);
             core.info(`info: context = ${contextStr}`);
             core.debug(`debug: context = ${contextStr}`);
-            const octokit = github.getOctokit(token);
-            const diffURL = ((_b = (_a = context === null || context === void 0 ? void 0 : context.payload) === null || _a === void 0 ? void 0 : _a.pull_request) === null || _b === void 0 ? void 0 : _b.diff_url) || '';
-            // const commitsURL = context?.payload?.pull_request?.commits_url || ''
-            core.info(`info: octokit request to URL: ${diffURL}`);
-            const diffResult = yield octokit.request(diffURL);
-            core.info(`info: request result = ${JSON.stringify(diffResult, null, 2)}`);
-            if (diffResult && diffResult.data) {
-                const diffFiles = parse(diffResult.data);
-                const diffFilesStr = JSON.stringify(diffFiles, null, 2);
-                core.info(`debug: diffFiles = ${diffFilesStr}`);
+            const contextPR = context.payload.pull_request;
+            if (!util_1.isNullOrUndefined(contextPR)) {
+                const prSpec = {
+                    token,
+                    owner: contextPR.base.repo.owner.login,
+                    repo: contextPR.base.repo.name,
+                    pull_number: contextPR.number,
+                };
+                core.info(`prSpec = ${JSON.stringify(prSpec, null, 2)}`);
+                const prArr = yield pull_request_1.getPRDetails(prSpec);
+                core.info(`res = ${JSON.stringify(prArr, null, 2)}`);
             }
-            core.setOutput('diff', new Date().toTimeString());
+            else {
+                core.setFailed('This is not a Pull Request');
+            }
+            core.setOutput('diff', new Date().toTimeString()); // fay
             core.info(`info: END...`);
         }
         catch (error) {
@@ -1514,6 +1583,175 @@ function run() {
     });
 }
 run();
+
+
+/***/ }),
+
+/***/ 162:
+/***/ (function(__unusedmodule, exports, __webpack_require__) {
+
+"use strict";
+
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    Object.defineProperty(o, k2, { enumerable: true, get: function() { return m[k]; } });
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || function (mod) {
+    if (mod && mod.__esModule) return mod;
+    var result = {};
+    if (mod != null) for (var k in mod) if (k !== "default" && Object.prototype.hasOwnProperty.call(mod, k)) __createBinding(result, mod, k);
+    __setModuleDefault(result, mod);
+    return result;
+};
+var __awaiter = (this && this.__awaiter) || function (thisArg, _arguments, P, generator) {
+    function adopt(value) { return value instanceof P ? value : new P(function (resolve) { resolve(value); }); }
+    return new (P || (P = Promise))(function (resolve, reject) {
+        function fulfilled(value) { try { step(generator.next(value)); } catch (e) { reject(e); } }
+        function rejected(value) { try { step(generator["throw"](value)); } catch (e) { reject(e); } }
+        function step(result) { result.done ? resolve(result.value) : adopt(result.value).then(fulfilled, rejected); }
+        step((generator = generator.apply(thisArg, _arguments || [])).next());
+    });
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.getPRDetails = void 0;
+/*
+ * pull_request.ts
+ */
+const github = __importStar(__webpack_require__(438));
+const parseFilePatch = __webpack_require__(63);
+const getPRDetails = ({ token, owner, repo, pull_number }) => __awaiter(void 0, void 0, void 0, function* () {
+    try {
+        const octokit = github.getOctokit(token);
+        const { data: fileList } = yield octokit.pulls.listFiles({
+            owner,
+            repo,
+            pull_number,
+        });
+        // asyncFunc when invoked with a listFiles() item, it will return the IPR object
+        const asyncFunc = (file) => __awaiter(void 0, void 0, void 0, function* () {
+            const pr = {
+                filename: file.filename,
+                status: file.status,
+            };
+            if (file.status === 'removed') {
+                // if the file is removed, then don't further need patchItemArr nor fullFileBody
+                return pr;
+            }
+            if (file.patch) {
+                pr.patchItemArr = parseFilePatch(file.patch);
+            }
+            if (file.status === 'added') {
+                // if the file is newly added, then don't further need fullFileBody because it'll be same as patchItemArr
+                return pr;
+            }
+            const blob = yield octokit.git.getBlob({
+                owner,
+                repo,
+                file_sha: file.sha,
+            });
+            if (blob.status === 200) {
+                const buff = new Buffer(blob.data.content, 'base64');
+                const clearText = buff.toString('ascii');
+                pr.fullFileBody = clearText;
+            }
+            return pr;
+        }); // asyncFunc
+        const asyncFuncArr = fileList.map(file => asyncFunc(file));
+        return Promise.all(asyncFuncArr);
+    }
+    catch (ex) {
+        console.error(`Error in getPRDetails`, ex);
+        throw ex;
+    }
+}); // getPRDetails
+exports.getPRDetails = getPRDetails;
+/*
+const getPRDetails_old = async ({token, owner, repo, pull_number}: IPRSpec): Promise<boolean> => {
+  try {
+    const octokit = github.getOctokit(token)
+    // const diffURL = 'https://api.github.com/repos/spin-org/data/pulls/272/commits'
+    // const diffResult = await octokit.request(diffURL);
+    // console.log(JSON.stringify(diffResult, null, 2))
+
+    const { data: diff } = await octokit.pulls.get({
+      owner,
+      repo,
+      pull_number,
+      mediaType: {
+        format: "diff",
+      },
+    });
+    console.log(`diff data: `, diff)
+    const files = parse(diff);
+    console.log('files length =', files.length); // number of patched files
+    files.forEach(function(file: { chunks: string | any[]; deletions: any; additions: any; }) {
+      console.log('\n------\n', JSON.stringify(file, null, 2))
+      // console.log(file.chunks.length); // number of hunks
+      // console.log(file.chunks[0].changes.length) // hunk added/deleted/context lines
+      // // each item in changes is a string
+      // console.log(file.deletions); // number of deletions in the patch
+      // console.log(file.additions); // number of additions in the patch
+    });
+
+    // ----------
+    // const { data: pr} = await octokit.pulls.get({
+    //   owner,
+    //   repo,
+    //   pull_number,
+    // });
+    // console.log(`\n\n------\nPR data: `, pr)
+
+    // ----------
+    const { data: fileList} = await octokit.pulls.listFiles({
+      owner,
+      repo,
+      pull_number,
+    });
+
+    // console.log(`\n\n------\nList files: `, fileList)
+    fileList.forEach(file => {
+      console.log(`\n`)
+      console.log(`filename: ${file.filename}`)
+      console.log(`sha: ${file.sha}`)
+      console.log(`status: ${file.status}`)
+      console.log('patch:\n', parseFilePatch(file.patch));
+    });
+
+    // -----------
+    const file_sha = '358a8601523d20e0ea61e6a27feafb7d04f61856' // obtained from listFiles()
+    const blob = await octokit.git.getBlob({
+      owner,
+      repo,
+      file_sha,
+    });
+    console.log('\n\n------ blobs ------\n')
+    // console.log(JSON.stringify(blob, null, 2))
+    if (blob.status === 200) {
+      // console.log(`encoded: `, blob.data.content)
+      const buff = new Buffer(blob.data.content, 'base64');
+      const clearText = buff.toString('ascii');
+      console.log(`Body:\n`)
+      console.log(clearText)
+    } else {
+      console.log(`error:`)
+      console.log(JSON.stringify(blob, null, 2))
+    }
+
+    return true
+  } catch (ex) {
+    console.error(`Error in getPRDetails`, ex)
+    return false
+  }
+}  // getPRDetails_old
+*/
 
 
 /***/ }),
@@ -5290,227 +5528,6 @@ function removeHook (state, name, method) {
 
   state.registry[name].splice(index, 1)
 }
-
-
-/***/ }),
-
-/***/ 833:
-/***/ (function(module) {
-
-// Generated by CoffeeScript 2.5.1
-  // parses unified diff
-  // http://www.gnu.org/software/diffutils/manual/diffutils.html#Unified-Format
-var defaultToWhiteSpace, escapeRegExp, ltrim, makeString, parseFile, parseFileFallback, trimLeft,
-  slice = [].slice;
-
-module.exports = function(input) {
-  var add, chunk, current, del, deleted_file, eof, file, files, from_file, index, j, len, line, lines, ln_add, ln_del, new_file, normal, parse, restart, schema, start, to_file;
-  if (!input) {
-    return [];
-  }
-  if (input.match(/^\s+$/)) {
-    return [];
-  }
-  lines = input.split('\n');
-  if (lines.length === 0) {
-    return [];
-  }
-  files = [];
-  file = null;
-  ln_del = 0;
-  ln_add = 0;
-  current = null;
-  start = function(line) {
-    var fileNames;
-    file = {
-      chunks: [],
-      deletions: 0,
-      additions: 0
-    };
-    files.push(file);
-    if (!file.to && !file.from) {
-      fileNames = parseFile(line);
-      if (fileNames) {
-        file.from = fileNames[0];
-        return file.to = fileNames[1];
-      }
-    }
-  };
-  restart = function() {
-    if (!file || file.chunks.length) {
-      return start();
-    }
-  };
-  new_file = function() {
-    restart();
-    file.new = true;
-    return file.from = '/dev/null';
-  };
-  deleted_file = function() {
-    restart();
-    file.deleted = true;
-    return file.to = '/dev/null';
-  };
-  index = function(line) {
-    restart();
-    return file.index = line.split(' ').slice(1);
-  };
-  from_file = function(line) {
-    restart();
-    return file.from = parseFileFallback(line);
-  };
-  to_file = function(line) {
-    restart();
-    return file.to = parseFileFallback(line);
-  };
-  chunk = function(line, match) {
-    var newLines, newStart, oldLines, oldStart;
-    ln_del = oldStart = +match[1];
-    oldLines = +(match[2] || 1);
-    ln_add = newStart = +match[3];
-    newLines = +(match[4] || 1);
-    current = {
-      content: line,
-      changes: [],
-      oldStart,
-      oldLines,
-      newStart,
-      newLines
-    };
-    return file.chunks.push(current);
-  };
-  del = function(line) {
-    if (!current) {
-      return;
-    }
-    current.changes.push({
-      type: 'del',
-      del: true,
-      ln: ln_del++,
-      content: line
-    });
-    return file.deletions++;
-  };
-  add = function(line) {
-    if (!current) {
-      return;
-    }
-    current.changes.push({
-      type: 'add',
-      add: true,
-      ln: ln_add++,
-      content: line
-    });
-    return file.additions++;
-  };
-  normal = function(line) {
-    if (!current) {
-      return;
-    }
-    return current.changes.push({
-      type: 'normal',
-      normal: true,
-      ln1: ln_del++,
-      ln2: ln_add++,
-      content: line
-    });
-  };
-  eof = function(line) {
-    var recentChange, ref;
-    ref = current.changes, [recentChange] = slice.call(ref, -1);
-    return current.changes.push({
-      type: recentChange.type,
-      [`${recentChange.type}`]: true,
-      ln1: recentChange.ln1,
-      ln2: recentChange.ln2,
-      ln: recentChange.ln,
-      content: line
-    });
-  };
-  // todo beter regexp to avoid detect normal line starting with diff
-  schema = [[/^\s+/, normal], [/^diff\s/, start], [/^new file mode \d+$/, new_file], [/^deleted file mode \d+$/, deleted_file], [/^index\s[\da-zA-Z]+\.\.[\da-zA-Z]+(\s(\d+))?$/, index], [/^---\s/, from_file], [/^\+\+\+\s/, to_file], [/^@@\s+\-(\d+),?(\d+)?\s+\+(\d+),?(\d+)?\s@@/, chunk], [/^-/, del], [/^\+/, add], [/^\\ No newline at end of file$/, eof]];
-  parse = function(line) {
-    var j, len, m, p;
-    for (j = 0, len = schema.length; j < len; j++) {
-      p = schema[j];
-      m = line.match(p[0]);
-      if (m) {
-        p[1](line, m);
-        return true;
-      }
-    }
-    return false;
-  };
-  for (j = 0, len = lines.length; j < len; j++) {
-    line = lines[j];
-    parse(line);
-  }
-  return files;
-};
-
-parseFile = function(s) {
-  var fileNames;
-  if (!s) {
-    return;
-  }
-  fileNames = s.match(/a\/.*(?=["']? ["']?b\/)|b\/.*$/g);
-  fileNames.map(function(fileName, i) {
-    return fileNames[i] = fileName.replace(/^(a|b)\//, '').replace(/("|')$/, '');
-  });
-  return fileNames;
-};
-
-// fallback function to overwrite file.from and file.to if executed
-parseFileFallback = function(s) {
-  var t;
-  s = ltrim(s, '-');
-  s = ltrim(s, '+');
-  s = s.trim();
-  // ignore possible time stamp
-  t = /\t.*|\d{4}-\d\d-\d\d\s\d\d:\d\d:\d\d(.\d+)?\s(\+|-)\d\d\d\d/.exec(s);
-  if (t) {
-    s = s.substring(0, t.index).trim();
-  }
-  // ignore git prefixes a/ or b/
-  if (s.match(/^(a|b)\//)) {
-    return s.substr(2);
-  } else {
-    return s;
-  }
-};
-
-ltrim = function(s, chars) {
-  s = makeString(s);
-  if (!chars && trimLeft) {
-    return trimLeft.call(s);
-  }
-  chars = defaultToWhiteSpace(chars);
-  return s.replace(new RegExp('^' + chars + '+'), '');
-};
-
-makeString = function(s) {
-  if (s === null) {
-    return '';
-  } else {
-    return s + '';
-  }
-};
-
-trimLeft = String.prototype.trimLeft;
-
-defaultToWhiteSpace = function(chars) {
-  if (chars === null) {
-    return '\\s';
-  }
-  if (chars.source) {
-    return chars.source;
-  }
-  return '[' + escapeRegExp(chars) + ']';
-};
-
-escapeRegExp = function(s) {
-  return makeString(s).replace(/([.*+?^=!:${}()|[\]\/\\])/g, '\\$1');
-};
 
 
 /***/ }),
